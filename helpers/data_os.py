@@ -1,6 +1,7 @@
 from pyspark.sql.functions import lit, col, concat_ws, sha2, expr
 from datetime import datetime
 from pyspark.sql import DataFrame
+from databricks.sdk.runtime import spark
 
 def add_loadAt_column(df: DataFrame) -> DataFrame:
     """
