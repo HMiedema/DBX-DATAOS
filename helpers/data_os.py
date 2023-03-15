@@ -126,7 +126,7 @@ class Data_OS:
       for loadedAt in sortedLoadedAtList:
           cnt = cnt + 1
           print('--------------------------------------------------------------------------------------------------------------------------------------------------------')
-          print('Batch ' + str(cnt) + ' with loadAt: ' + str(loadedAt))
+          print('Batch ' + str(cnt) + ' with loadedAt: ' + str(loadedAt))
           bronze_df_iteration = bronze_df.filter(col('__LOADED_AT') == loadedAt)\
           .withColumn("__START_AT", col('__LOADED_AT'))\
           .withColumn("__END_AT", lit(None))\
@@ -141,7 +141,9 @@ class Data_OS:
           else:
               bronze_df_iteration.createOrReplaceTempView("source_iteration")  
               keys_equal_source_target = " AND ".join(["source." + key + " = target." + key for key in keys])
-              keys_source_null = " AND ".join(["source." + key + " IS NULL " for key in keys])  
+              keys_source_null = " AND ".join(["source." + key + " IS NULL " for key in keys])
+              merge_join_keys = ", ".join([key + " AS " + key + "_MERGE_JOIN"  for key in keys])
+              merge_keys_equal_source_target = " AND ".join(["source." + key + "_MERGE_JOIN = target." + key for key in keys])
               updates_and_deletes = '\
                   SELECT null join_key, source.*, target.name AS __TARGET_JOIN_KEY \
                   FROM source_iteration AS source \
@@ -155,7 +157,7 @@ class Data_OS:
               .drop("__TARGET_JOIN_KEY")\
               .createOrReplaceTempView("update_and_deletes")        
               all_inserts_updates_deletes = '\
-                  SELECT name AS join_key, source_iteration.* \
+                  SELECT ' + merge_join_keys + ', source_iteration.* \
                   FROM source_iteration \
                   UNION ALL \
                   SELECT * FROM update_and_deletes'  
@@ -164,7 +166,7 @@ class Data_OS:
               merge_source_target = '\
                   MERGE INTO ' + silverTableName + ' AS target \
                   USING inserts_update_and_deletes AS source \
-                  ON ' + keys_equal_source_target + ' \
+                  ON ' + merge_keys_equal_source_target + ' \
                   WHEN MATCHED AND target.__END_AT IS NULL AND target.__CHANGE_TYPE <> "DELETE" AND target.__ROW_HASH <> source.__ROW_HASH THEN UPDATE SET target.__END_AT = source.__START_AT \
                   WHEN NOT MATCHED THEN INSERT * \
                   WHEN NOT MATCHED BY SOURCE AND target.__END_AT IS NULL AND target.__CHANGE_TYPE <> "DELETE" THEN UPDATE SET target.__END_AT = to_timestamp("' + str(loadedAt) + '")'
