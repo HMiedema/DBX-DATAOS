@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %sql
-# MAGIC -- Drop tables from previous demoes
+# MAGIC -- Drop tables from previous demo's
 # MAGIC DROP TABLE amidbronze.bronze_demo;
 # MAGIC DROP TABLE amidbronze.silver_demo;
 
